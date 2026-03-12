@@ -1,8 +1,8 @@
 import { formatUnits, JsonRpcProvider, Contract } from 'ethers';
 import { useEffect, useState } from 'react';
 
+import { getWallet } from '../api/wallet';
 import MetricCard from '../components/MetricCard';
-import { getWallet } from '../lib/wallet';
 import type { WalletBalanceResponse } from '../types/api';
 
 function WalletDashboard() {

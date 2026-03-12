@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { swapHueToUsdc } from '../lib/wallet';
+import { swapHueToUsdc } from '../api/wallet';
 
 function RedeemPage() {
   const [amount, setAmount] = useState('0');

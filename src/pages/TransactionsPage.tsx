@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { getTransactionHistory, getWallet } from '../lib/wallet';
+import { getTransactionHistory, getWallet } from '../api/wallet';
 import type { TransactionHistoryItem } from '../types/api';
 
 const getExplorerBaseUrl = (chainId?: number): string => {

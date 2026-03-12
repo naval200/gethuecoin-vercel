@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { withdrawUsdc } from '../lib/wallet';
+import { withdrawUsdc } from '../api/wallet';
 
 function WithdrawPage() {
   const [address, setAddress] = useState('');

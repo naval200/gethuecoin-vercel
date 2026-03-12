@@ -1,13 +1,10 @@
 import axios, { AxiosError } from 'axios';
 
-import { clearAuthToken, getAuthToken } from './storage';
-
-export function getApiBaseUrl(): string {
-  return (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ?? '';
-}
+import { API_BASE_URL } from '../config/appConfig';
+import { clearAuthToken, getAuthToken } from '../lib/storage';
 
 export const apiV0Client = axios.create({
-  baseURL: `${getApiBaseUrl()}/v0`,
+  baseURL: `${API_BASE_URL}/v0`,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
@@ -17,9 +14,12 @@ export const apiV0Client = axios.create({
 });
 
 apiV0Client.interceptors.request.use((config) => {
-  const token = getAuthToken();
-  if (token) {
-    config.headers.authorization = `Bearer ${token}`;
+  // /auth is the token exchange endpoint; it does not require an existing bearer token.
+  if (config.url !== '/auth') {
+    const token = getAuthToken();
+    if (token) {
+      config.headers.authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
@@ -33,3 +33,4 @@ apiV0Client.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
