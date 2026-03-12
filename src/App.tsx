@@ -5,7 +5,7 @@ import { signinUser } from './api/auth';
 import TopNav from './components/TopNav';
 import { API_BASE_URL } from './config/appConfig';
 import { isFirebaseConfigured, signInWithApple, signInWithGoogle, signOutFirebaseSession } from './lib/firebaseAuth';
-import { clearAuthToken, getAuthToken, setAuthToken } from './lib/storage';
+import { clearAuthSource, clearAuthToken, getAuthToken, getAuthSource, setAuthSource, setAuthToken } from './lib/storage';
 import RedeemPage from './pages/RedeemPage';
 import TransactionsPage from './pages/TransactionsPage';
 import WalletDashboard from './pages/WalletDashboard';
@@ -66,6 +66,7 @@ function getFriendlyAuthError(error: unknown): string {
 function App() {
   const urlAuthPayload = useMemo(() => getUrlAuthPayload(), []);
   const [savedToken, setSavedToken] = useState(() => urlAuthPayload.directToken || getAuthToken());
+  const [authSource, setAuthSourceState] = useState<'' | 'url' | 'webapp'>(() => getAuthSource());
   const [authError, setAuthError] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
   const baseUrl = API_BASE_URL;
@@ -81,6 +82,8 @@ function App() {
     const applyAuthFromUrl = async () => {
       if (urlAuthPayload.directToken) {
         setAuthToken(urlAuthPayload.directToken);
+        setAuthSource('url');
+        setAuthSourceState('url');
         clearAuthParamsFromUrl();
         return;
       }
@@ -93,6 +96,8 @@ function App() {
           return;
         }
         setSavedToken(authToken);
+        setAuthSource('url');
+        setAuthSourceState('url');
         clearAuthParamsFromUrl();
       } catch (error) {
         if (isCancelled) {
@@ -112,10 +117,20 @@ function App() {
     };
   }, [urlAuthPayload]);
 
+  const clearTokenOnly = () => {
+    clearAuthToken();
+    clearAuthSource();
+    setSavedToken('');
+    setAuthSourceState('');
+    setAuthError('');
+  };
+
   const logout = () => {
     void signOutFirebaseSession();
     clearAuthToken();
+    clearAuthSource();
     setSavedToken('');
+    setAuthSourceState('');
     setAuthError('');
   };
 
@@ -129,6 +144,8 @@ function App() {
       const authToken = await signinUser(firebaseToken);
       console.log('[auth] Login flow: Success, session saved');
       setSavedToken(authToken);
+      setAuthSource('webapp');
+      setAuthSourceState('webapp');
     } catch (error) {
       console.error('[auth] Login flow: Google login failed', error);
       setAuthError(getFriendlyAuthError(error));
@@ -147,6 +164,8 @@ function App() {
       const authToken = await signinUser(firebaseToken);
       console.log('[auth] Login flow: Success, session saved');
       setSavedToken(authToken);
+      setAuthSource('webapp');
+      setAuthSourceState('webapp');
     } catch (error) {
       console.error('[auth] Login flow: Apple login failed', error);
       setAuthError(getFriendlyAuthError(error));
@@ -161,12 +180,12 @@ function App() {
         <h1>Hue Wallet Web</h1>
         <p className='mutedText'>gethuecoin.com</p>
       </header>
-      <section className='panel'>
-        <h2 className='panelTitle'>Session</h2>
-        <p className='mutedText breakWord'>
-          API Base URL: {baseUrl}
-        </p>
-        {!hasToken ? (
+      {!hasToken && (
+        <section className='panel'>
+          <h2 className='panelTitle'>Session</h2>
+          <p className='mutedText breakWord'>
+            API Base URL: {baseUrl}
+          </p>
           <div className='authActions'>
             <button type='button' onClick={() => void startGoogleLogin()} disabled={!isFirebaseConfigured || isSigningIn}>
               Continue with Google
@@ -189,15 +208,15 @@ function App() {
             {isSigningIn && <p className='mutedText'>Signing you in...</p>}
             {authError && <p className='errorText'>{authError}</p>}
           </div>
-        ) : (
-          <button type='button' className='secondaryBtn' onClick={logout}>
-            Clear Token
-          </button>
-        )}
-      </section>
+        </section>
+      )}
       {hasToken ? (
         <>
-          <TopNav />
+          <TopNav
+            authSource={authSource || 'webapp'}
+            onClearToken={clearTokenOnly}
+            onLogout={logout}
+          />
           <Routes>
             <Route path='/' element={<WalletDashboard />} />
             <Route path='/transactions' element={<TransactionsPage />} />
