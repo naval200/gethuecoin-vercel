@@ -3,7 +3,8 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { signinUser } from './api/auth';
 import TopNav from './components/TopNav';
-import { API_BASE_URL, APPLE_LOGIN_URL, GOOGLE_LOGIN_URL } from './config/appConfig';
+import { API_BASE_URL } from './config/appConfig';
+import { isFirebaseConfigured, signInWithApple, signInWithGoogle, signOutFirebaseSession } from './lib/firebaseAuth';
 import { clearAuthToken, getAuthToken, setAuthToken } from './lib/storage';
 import RedeemPage from './pages/RedeemPage';
 import TransactionsPage from './pages/TransactionsPage';
@@ -51,14 +52,19 @@ function clearAuthParamsFromUrl(): void {
   window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
 }
 
+function getFriendlyAuthError(error: unknown): string {
+  if (error instanceof Error && error.message.includes('popup')) {
+    return 'Popup was blocked or closed. Please retry and allow popups.';
+  }
+  return 'Could not complete login. Please try Google or Apple login again.';
+}
+
 function App() {
   const urlAuthPayload = useMemo(() => getUrlAuthPayload(), []);
   const [savedToken, setSavedToken] = useState(() => urlAuthPayload.directToken || getAuthToken());
   const [authError, setAuthError] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
   const baseUrl = API_BASE_URL;
-  const googleLoginUrl = GOOGLE_LOGIN_URL;
-  const appleLoginUrl = APPLE_LOGIN_URL;
 
   const hasToken = savedToken.length > 0;
 
@@ -84,11 +90,11 @@ function App() {
         }
         setSavedToken(authToken);
         clearAuthParamsFromUrl();
-      } catch {
+      } catch (error) {
         if (isCancelled) {
           return;
         }
-        setAuthError('Could not complete login. Please try Google or Apple login again.');
+        setAuthError(getFriendlyAuthError(error));
       } finally {
         if (!isCancelled) {
           setIsSigningIn(false);
@@ -103,17 +109,38 @@ function App() {
   }, [urlAuthPayload]);
 
   const logout = () => {
+    void signOutFirebaseSession();
     clearAuthToken();
     setSavedToken('');
     setAuthError('');
   };
 
-  const startGoogleLogin = () => {
-    window.location.href = googleLoginUrl;
+  const startGoogleLogin = async () => {
+    setIsSigningIn(true);
+    setAuthError('');
+    try {
+      const firebaseToken = await signInWithGoogle();
+      const authToken = await signinUser(firebaseToken);
+      setSavedToken(authToken);
+    } catch (error) {
+      setAuthError(getFriendlyAuthError(error));
+    } finally {
+      setIsSigningIn(false);
+    }
   };
 
-  const startAppleLogin = () => {
-    window.location.href = appleLoginUrl;
+  const startAppleLogin = async () => {
+    setIsSigningIn(true);
+    setAuthError('');
+    try {
+      const firebaseToken = await signInWithApple();
+      const authToken = await signinUser(firebaseToken);
+      setSavedToken(authToken);
+    } catch (error) {
+      setAuthError(getFriendlyAuthError(error));
+    } finally {
+      setIsSigningIn(false);
+    }
   };
 
   return (
@@ -129,21 +156,23 @@ function App() {
         </p>
         {!hasToken ? (
           <div className='authActions'>
-            <button type='button' onClick={startGoogleLogin} disabled={!googleLoginUrl || isSigningIn}>
+            <button type='button' onClick={() => void startGoogleLogin()} disabled={!isFirebaseConfigured || isSigningIn}>
               Continue with Google
             </button>
             <button
               type='button'
               className='secondaryBtn'
-              onClick={startAppleLogin}
-              disabled={!appleLoginUrl || isSigningIn}
+              onClick={() => void startAppleLogin()}
+              disabled={!isFirebaseConfigured || isSigningIn}
             >
               Continue with Apple
             </button>
             <p className='mutedText'>
-              {baseUrl
-                ? 'After login, your token will be saved automatically on this device.'
-                : 'Set VITE_API_BASE_URL in environment to enable login.'}
+              {!isFirebaseConfigured
+                ? 'Set Firebase environment values to enable Google/Apple login.'
+                : baseUrl
+                  ? 'After login, your token will be saved automatically on this device.'
+                  : 'Set VITE_API_BASE_URL in environment to enable login.'}
             </p>
             {isSigningIn && <p className='mutedText'>Signing you in...</p>}
             {authError && <p className='errorText'>{authError}</p>}
