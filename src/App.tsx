@@ -53,8 +53,12 @@ function clearAuthParamsFromUrl(): void {
 }
 
 function getFriendlyAuthError(error: unknown): string {
-  if (error instanceof Error && error.message.includes('popup')) {
+  const msg = error instanceof Error ? error.message : String(error);
+  if (msg.includes('popup')) {
     return 'Popup was blocked or closed. Please retry and allow popups.';
+  }
+  if (msg.includes('auth/unauthorized-domain')) {
+    return 'This domain is not allowed for sign-in. Add it in Firebase Console → Authentication → Settings → Authorized domains (e.g. localhost or your host).';
   }
   return 'Could not complete login. Please try Google or Apple login again.';
 }
@@ -116,13 +120,17 @@ function App() {
   };
 
   const startGoogleLogin = async () => {
+    console.log('[auth] Login flow: Google clicked');
     setIsSigningIn(true);
     setAuthError('');
     try {
       const firebaseToken = await signInWithGoogle();
+      console.log('[auth] Login flow: Firebase token received, exchanging with backend');
       const authToken = await signinUser(firebaseToken);
+      console.log('[auth] Login flow: Success, session saved');
       setSavedToken(authToken);
     } catch (error) {
+      console.error('[auth] Login flow: Google login failed', error);
       setAuthError(getFriendlyAuthError(error));
     } finally {
       setIsSigningIn(false);
@@ -130,13 +138,17 @@ function App() {
   };
 
   const startAppleLogin = async () => {
+    console.log('[auth] Login flow: Apple clicked');
     setIsSigningIn(true);
     setAuthError('');
     try {
       const firebaseToken = await signInWithApple();
+      console.log('[auth] Login flow: Firebase token received, exchanging with backend');
       const authToken = await signinUser(firebaseToken);
+      console.log('[auth] Login flow: Success, session saved');
       setSavedToken(authToken);
     } catch (error) {
+      console.error('[auth] Login flow: Apple login failed', error);
       setAuthError(getFriendlyAuthError(error));
     } finally {
       setIsSigningIn(false);

@@ -6,6 +6,10 @@ const DEFAULT_API_BASE_URL = 'https://dev-api.halfchess.com';
 
 export const API_BASE_URL = (env('VITE_API_BASE_URL') || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
 
+if (typeof console !== 'undefined') {
+  console.log('[gethuecoin] VITE_API_BASE_URL (in use):', API_BASE_URL);
+}
+
 export const FIREBASE_CONFIG = {
   apiKey: env('VITE_FIREBASE_API_KEY'),
   authDomain: env('VITE_FIREBASE_AUTH_DOMAIN'),
