@@ -3,12 +3,14 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { signinUser } from './api/auth';
 import TopNav from './components/TopNav';
+import WalletOverview from './components/WalletOverview';
+import { WalletProvider } from './context/WalletContext';
 import { API_BASE_URL } from './config/appConfig';
+import { useWalletOverview } from './hooks/useWalletOverview';
 import { isFirebaseConfigured, signInWithApple, signInWithGoogle, signOutFirebaseSession } from './lib/firebaseAuth';
 import { clearAuthSource, clearAuthToken, getAuthToken, getAuthSource, setAuthSource, setAuthToken } from './lib/storage';
 import RedeemPage from './pages/RedeemPage';
 import TransactionsPage from './pages/TransactionsPage';
-import WalletDashboard from './pages/WalletDashboard';
 import WithdrawPage from './pages/WithdrawPage';
 
 interface UrlAuthPayload {
@@ -72,6 +74,7 @@ function App() {
   const baseUrl = API_BASE_URL;
 
   const hasToken = savedToken.length > 0;
+  const walletOverview = useWalletOverview(hasToken);
 
   useEffect(() => {
     if (!urlAuthPayload.directToken && !urlAuthPayload.exchangeToken) {
@@ -177,8 +180,27 @@ function App() {
   return (
     <main className='appRoot'>
       <header className='appHeader'>
-        <h1>Hue Wallet Web</h1>
-        <p className='mutedText'>gethuecoin.com</p>
+        <div className='appHeaderTopRow'>
+          <h1 className='appHeaderTitle'>Your Hue Wallet</h1>
+          {hasToken && (
+            <div className='appHeaderActions'>
+              {authSource === 'url' && (
+                <button type='button' className='headerBtn' onClick={clearTokenOnly}>
+                  Back
+                </button>
+              )}
+              <button type='button' className='headerBtn' onClick={logout}>
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
+        {hasToken && (
+          <>
+            <WalletOverview overview={walletOverview} />
+            <TopNav />
+          </>
+        )}
       </header>
       {!hasToken && (
         <section className='panel'>
@@ -211,20 +233,15 @@ function App() {
         </section>
       )}
       {hasToken ? (
-        <>
-          <TopNav
-            authSource={authSource || 'webapp'}
-            onClearToken={clearTokenOnly}
-            onLogout={logout}
-          />
+        <WalletProvider value={walletOverview}>
           <Routes>
-            <Route path='/' element={<WalletDashboard />} />
+            <Route path='/' element={<Navigate to='/redeem' replace />} />
             <Route path='/transactions' element={<TransactionsPage />} />
             <Route path='/redeem' element={<RedeemPage />} />
             <Route path='/withdraw' element={<WithdrawPage />} />
-            <Route path='*' element={<Navigate to='/' replace />} />
+            <Route path='*' element={<Navigate to='/redeem' replace />} />
           </Routes>
-        </>
+        </WalletProvider>
       ) : (
         <section className='panel'>
           <p className='mutedText'>

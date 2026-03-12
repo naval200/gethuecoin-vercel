@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { getTransactionHistory, getWallet } from '../api/wallet';
+import { getTransactionHistory } from '../api/wallet';
+import { useWalletContext } from '../context/WalletContext';
 import type { TransactionHistoryItem } from '../types/api';
 
 const getExplorerBaseUrl = (chainId?: number): string => {
@@ -27,9 +28,12 @@ const getTxHash = (item: TransactionHistoryItem): string => {
 };
 
 function TransactionsPage() {
+  const walletOverview = useWalletContext();
+  const chainId = walletOverview?.wallet?.chainId;
+  const explorerBaseUrl = getExplorerBaseUrl(chainId);
+
   const pageSize = 20;
   const [transactions, setTransactions] = useState<TransactionHistoryItem[]>([]);
-  const [explorerBaseUrl, setExplorerBaseUrl] = useState('https://basescan.org');
   const [offset, setOffset] = useState(0);
   const [total, setTotal] = useState(0);
   const [copiedLedgerId, setCopiedLedgerId] = useState<number | null>(null);
@@ -41,11 +45,10 @@ function TransactionsPage() {
   const loadTransactions = useCallback(async (nextOffset = offset): Promise<void> => {
     setLoading(true);
     try {
-      const [txData, walletData] = await Promise.all([getTransactionHistory(pageSize, nextOffset), getWallet()]);
+      const txData = await getTransactionHistory(pageSize, nextOffset);
       setTransactions(txData.transactions);
       setOffset(nextOffset);
       setTotal(txData.pagination.total);
-      setExplorerBaseUrl(getExplorerBaseUrl(walletData.chainId));
       setError('');
     } catch {
       setError('Failed to load transactions.');

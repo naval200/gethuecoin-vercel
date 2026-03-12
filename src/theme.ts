@@ -24,9 +24,9 @@ export const theme = {
     lg: '24px',
   },
   text: {
-    title: '700 28px/34px Inter, system-ui, sans-serif',
-    heading: '600 20px/28px Inter, system-ui, sans-serif',
-    body: '500 14px/20px Inter, system-ui, sans-serif',
-    small: '500 12px/16px Inter, system-ui, sans-serif',
+    title: '700 28px/34px "Plus Jakarta Sans", system-ui, sans-serif',
+    heading: '600 20px/28px "Plus Jakarta Sans", system-ui, sans-serif',
+    body: '500 14px/20px "Plus Jakarta Sans", system-ui, sans-serif',
+    small: '500 12px/16px "Plus Jakarta Sans", system-ui, sans-serif',
   },
 } as const;
