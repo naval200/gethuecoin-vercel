@@ -19,13 +19,13 @@ const CONFIGS: Record<AppMode, EnvConfig> = {
   mainnet: {
     apiBaseUrl: 'https://api.halfchess.com',
     firebase: {
-      apiKey: 'AIzaSyBg5iR8onjBaYWjqsigD7PNA1YccrqIdI8',
-      authDomain: 'hf-bet-app.firebaseapp.com',
-      projectId: 'hf-bet-app',
-      appId: '1:537026299712:web:5f199ba36635b9da6fdca5',
-      messagingSenderId: '537026299712',
-      storageBucket: 'hf-bet-app.firebasestorage.app',
-      measurementId: 'G-G4T3QTP1Q5',
+      apiKey: 'AIzaSyCytHCjedD3jlUkqIDqudpEsIP5BYCLDbw',
+      authDomain: 'hf-app-prod.firebaseapp.com',
+      projectId: 'hf-app-prod',
+      storageBucket: 'hf-app-prod.firebasestorage.app',
+      messagingSenderId: '124887059085',
+      appId: '1:124887059085:web:d3b7bbc6c5b007f65c30c4',
+      measurementId: 'G-RRNZJ02647'
     },
   },
   development: {
