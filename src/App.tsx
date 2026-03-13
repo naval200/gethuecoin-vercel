@@ -158,7 +158,7 @@ function App() {
       ) : (
         <Routes>
           <Route path='/' element={<WelcomePage />} />
-          <Route path='/developer-login' element={<DeveloperLoginPage />} />
+          <Route path='/login' element={<DeveloperLoginPage />} />
           <Route path='*' element={<Navigate to='/' replace />} />
         </Routes>
       )}
