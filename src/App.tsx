@@ -8,7 +8,6 @@ import { useWalletOverview } from './hooks/useWalletOverview';
 import DeveloperLoginPage from './pages/DeveloperLoginPage';
 import RedeemPage from './pages/RedeemPage';
 import TransactionsPage from './pages/TransactionsPage';
-import WelcomePage from './pages/WelcomePage';
 import WithdrawPage from './pages/WithdrawPage';
 import { useAppDispatch, useAppSelector } from './redux/hooks';
 import {
@@ -157,7 +156,7 @@ function App() {
         </WalletProvider>
       ) : (
         <Routes>
-          <Route path='/' element={<WelcomePage />} />
+          <Route path='/' element={<DeveloperLoginPage />} />
           <Route path='/login' element={<DeveloperLoginPage />} />
           <Route path='*' element={<Navigate to='/' replace />} />
         </Routes>

@@ -39,12 +39,8 @@ export default function DeveloperLoginPage() {
 
   return (
     <section className='panel'>
-      <h2 className='panelTitle'>Session</h2>
-      <p className='mutedText breakWord'>
-        API Base URL: {baseUrl}
-      </p>
       <div className='formRow'>
-        <label htmlFor='mode'>Mode</label>
+        <label htmlFor='mode'>Select your mode (if you are not a developer, you should choose mainnet)</label>
         <select
           id='mode'
           value={appMode}
@@ -58,7 +54,7 @@ export default function DeveloperLoginPage() {
           ))}
         </select>
       </div>
-      <div className='authActions'>
+      <div className='authActions' style={{ marginTop: '1.5rem' }}>
         <button
           type='button'
           onClick={() => dispatch(loginRequested('google'))}
@@ -74,16 +70,21 @@ export default function DeveloperLoginPage() {
         >
           Continue with Apple
         </button>
-        <p className='mutedText'>
-          {!isFirebaseConfigured(getFirebaseConfig(appMode))
-            ? 'Firebase is not configured for this mode.'
-            : baseUrl
-              ? 'After login, your token will be saved automatically on this device.'
+        {(!isFirebaseConfigured(getFirebaseConfig(appMode)) || !baseUrl) && (
+          <p className='mutedText'>
+            {!isFirebaseConfigured(getFirebaseConfig(appMode))
+              ? 'Firebase is not configured for this mode.'
               : 'Add ?mode=development or ?mode=local to the URL to use a different environment.'}
-        </p>
+          </p>
+        )}
         {isAuthLoading && <p className='mutedText'>Signing you in...</p>}
         {authError && <p className='errorText'>{authError}</p>}
       </div>
+      <p className='mutedText' style={{ marginTop: '1.5rem' }}>
+        <a href='https://gethuecoin.com' target='_blank' rel='noopener noreferrer'>
+          gethuecoin.com
+        </a>
+      </p>
     </section>
   );
 }
