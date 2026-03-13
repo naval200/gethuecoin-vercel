@@ -175,6 +175,23 @@ body {
   gap: 8px;
 }
 
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.selectInput {
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: #fff;
+  color: #1a1a24;
+  cursor: pointer;
+}
+
 .authActions {
   margin-top: 12px;
   display: grid;
@@ -363,4 +380,20 @@ button:disabled {
     order: -1;
     width: 100%;
   }
+}
+
+.modeIndicator {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  z-index: 1000;
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(229, 231, 235, 0.9);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(8px);
 }

@@ -4,11 +4,12 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-
 import TopNav from './components/TopNav';
 import WalletOverview from './components/WalletOverview';
 import { WalletProvider } from './context/WalletContext';
-import { API_BASE_URL } from './config/appConfig';
 import { useWalletOverview } from './hooks/useWalletOverview';
-import { isFirebaseConfigured } from './lib/firebaseAuth';
+import { getStoredMode } from './lib/mode';
+import DeveloperLoginPage from './pages/DeveloperLoginPage';
 import RedeemPage from './pages/RedeemPage';
 import TransactionsPage from './pages/TransactionsPage';
+import WelcomePage from './pages/WelcomePage';
 import WithdrawPage from './pages/WithdrawPage';
 import { useAppDispatch, useAppSelector } from './redux/hooks';
 import {
@@ -19,8 +20,6 @@ import {
   setAuthTokenAndProvider,
 } from './redux/auth/redux';
 import {
-  selectAuthError,
-  selectAuthIsLoading,
   selectAuthProvider,
   selectHasToken,
 } from './redux/auth/selectors';
@@ -30,24 +29,17 @@ interface UrlAuthPayload {
   exchangeToken: string;
 }
 
+const AUTH_TOKEN_PARAM = 'token';
+
 function getUrlAuthPayload(): UrlAuthPayload {
   const url = new URL(window.location.href);
   const hashParams = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : url.hash);
   const read = (key: string) => url.searchParams.get(key) ?? hashParams.get(key);
-  const directToken =
-    read('authToken') ??
-    read('token') ??
-    read('access_token') ??
-    '';
-  const exchangeToken =
-    read('firebaseToken') ??
-    read('idToken') ??
-    read('oauthToken') ??
-    '';
+  const token = read(AUTH_TOKEN_PARAM)?.trim() ?? '';
 
   return {
-    directToken: directToken.trim(),
-    exchangeToken: exchangeToken.trim(),
+    directToken: token,
+    exchangeToken: '',
   };
 }
 
@@ -55,11 +47,8 @@ function clearAuthParamsFromUrl(): void {
   const url = new URL(window.location.href);
   const hashParams = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : url.hash);
 
-  const keys = ['token', 'authToken', 'access_token', 'firebaseToken', 'idToken', 'oauthToken'];
-  for (const key of keys) {
-    url.searchParams.delete(key);
-    hashParams.delete(key);
-  }
+  url.searchParams.delete(AUTH_TOKEN_PARAM);
+  hashParams.delete(AUTH_TOKEN_PARAM);
 
   const nextHash = hashParams.toString();
   url.hash = nextHash ? `#${nextHash}` : '';
@@ -91,9 +80,6 @@ function App() {
   const urlAuthPayload = useMemo(() => getUrlAuthPayload(), []);
   const hasToken = useAppSelector(selectHasToken);
   const authProvider = useAppSelector(selectAuthProvider);
-  const authError = useAppSelector(selectAuthError);
-  const isAuthLoading = useAppSelector(selectAuthIsLoading);
-  const baseUrl = API_BASE_URL;
   const authProviderTriggeredRef = useRef(false);
 
   const walletOverview = useWalletOverview(hasToken);
@@ -128,8 +114,16 @@ function App() {
     dispatch(logoutRequested());
   };
 
+  // Popup only for local/development; mainnet (default) has no indicator.
+  const storedMode = getStoredMode();
+
   return (
     <main className='appRoot'>
+      {storedMode != null && (
+        <div className='modeIndicator' aria-live='polite'>
+          {storedMode === 'local' ? 'Local mode' : 'Development mode'}
+        </div>
+      )}
       <header className='appHeader'>
         <div className='appHeaderTopRow'>
           <h1 className='appHeaderTitle'>Your Hue Wallet</h1>
@@ -165,61 +159,8 @@ function App() {
         </WalletProvider>
       ) : (
         <Routes>
-          <Route
-            path='/'
-            element={
-              <section className='panel'>
-                <h2 className='panelTitle'>Welcome</h2>
-                <div className='authActions'>
-                  <button
-                    type='button'
-                    onClick={() => {
-                      window.location.href = 'https://gethuecoin.com';
-                    }}
-                  >
-                    Go to gethuecoin.com
-                  </button>
-                </div>
-              </section>
-            }
-          />
-          <Route
-            path='/developer-login'
-            element={
-              <section className='panel'>
-                <h2 className='panelTitle'>Session</h2>
-                <p className='mutedText breakWord'>
-                  API Base URL: {baseUrl}
-                </p>
-                <div className='authActions'>
-                  <button
-                    type='button'
-                    onClick={() => dispatch(loginRequested('google'))}
-                    disabled={!isFirebaseConfigured || isAuthLoading}
-                  >
-                    Continue with Google
-                  </button>
-                  <button
-                    type='button'
-                    className='secondaryBtn'
-                    onClick={() => dispatch(loginRequested('apple'))}
-                    disabled={!isFirebaseConfigured || isAuthLoading}
-                  >
-                    Continue with Apple
-                  </button>
-                  <p className='mutedText'>
-                    {!isFirebaseConfigured
-                      ? 'Set Firebase environment values to enable Google/Apple login.'
-                      : baseUrl
-                        ? 'After login, your token will be saved automatically on this device.'
-                        : 'Set VITE_API_BASE_URL in environment to enable login.'}
-                  </p>
-                  {isAuthLoading && <p className='mutedText'>Signing you in...</p>}
-                  {authError && <p className='errorText'>{authError}</p>}
-                </div>
-              </section>
-            }
-          />
+          <Route path='/' element={<WelcomePage />} />
+          <Route path='/developer-login' element={<DeveloperLoginPage />} />
           <Route path='*' element={<Navigate to='/' replace />} />
         </Routes>
       )}

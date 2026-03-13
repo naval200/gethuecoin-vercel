@@ -2,6 +2,7 @@ import type { Middleware } from '@reduxjs/toolkit';
 
 import { signinUser } from '../../api/auth';
 import { signInWithApple, signInWithGoogle, signOutFirebaseSession } from '../../lib/firebaseAuth';
+import { clearModeInStorage } from '../../lib/mode';
 import { clearAuthSource, clearAuthToken, setAuthSource, setAuthToken } from '../../lib/storage';
 import {
   clearAuth,
@@ -67,6 +68,7 @@ export const authMiddleware: Middleware = ({ dispatch }) => (next) => async (act
   if (clearAuth.match(action)) {
     clearAuthToken();
     clearAuthSource();
+    clearModeInStorage();
   }
 
   return result;

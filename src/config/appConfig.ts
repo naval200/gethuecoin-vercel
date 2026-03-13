@@ -1,22 +1,75 @@
-function env(name: string): string {
-  return (import.meta.env[name] as string | undefined)?.trim() ?? '';
+import { type AppMode, getAppMode } from '../lib/mode';
+
+export type { AppMode } from '../lib/mode';
+
+export const APP_MODE = getAppMode();
+
+interface EnvConfig {
+  apiBaseUrl: string;
+  firebase: {
+    apiKey: string;
+    authDomain: string;
+    projectId: string;
+    appId: string;
+    messagingSenderId: string;
+    storageBucket: string;
+    measurementId: string;
+  };
 }
 
-const DEFAULT_API_BASE_URL = 'https://dev-api.halfchess.com';
+const CONFIGS: Record<AppMode, EnvConfig> = {
+  mainnet: {
+    apiBaseUrl: 'https://api.halfchess.com',
+    firebase: {
+      apiKey: 'AIzaSyBg5iR8onjBaYWjqsigD7PNA1YccrqIdI8',
+      authDomain: 'hf-bet-app.firebaseapp.com',
+      projectId: 'hf-bet-app',
+      appId: '1:537026299712:web:5f199ba36635b9da6fdca5',
+      messagingSenderId: '537026299712',
+      storageBucket: 'hf-bet-app.firebasestorage.app',
+      measurementId: 'G-G4T3QTP1Q5',
+    },
+  },
+  development: {
+    apiBaseUrl: 'https://dev-api.halfchess.com',
+    firebase: {
+      apiKey: 'AIzaSyBg5iR8onjBaYWjqsigD7PNA1YccrqIdI8',
+      authDomain: 'hf-bet-app.firebaseapp.com',
+      projectId: 'hf-bet-app',
+      appId: '1:537026299712:web:5f199ba36635b9da6fdca5',
+      messagingSenderId: '537026299712',
+      storageBucket: 'hf-bet-app.firebasestorage.app',
+      measurementId: 'G-G4T3QTP1Q5',
+    },
+  },
+  local: {
+    apiBaseUrl: 'http://localhost:8080',
+    firebase: {
+      apiKey: 'AIzaSyBg5iR8onjBaYWjqsigD7PNA1YccrqIdI8',
+      authDomain: 'hf-bet-app.firebaseapp.com',
+      projectId: 'hf-bet-app',
+      appId: '1:537026299712:web:5f199ba36635b9da6fdca5',
+      messagingSenderId: '537026299712',
+      storageBucket: 'hf-bet-app.firebasestorage.app',
+      measurementId: 'G-G4T3QTP1Q5',
+    },
+  },
+};
 
-export const API_BASE_URL = (env('VITE_API_BASE_URL') || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
+const active = CONFIGS[APP_MODE];
 
-if (typeof console !== 'undefined') {
-  console.log('[gethuecoin] VITE_API_BASE_URL (in use):', API_BASE_URL);
-}
+export const API_BASE_URL = active.apiBaseUrl.replace(/\/+$/, '');
 
 export const FIREBASE_CONFIG = {
-  apiKey: env('VITE_FIREBASE_API_KEY'),
-  authDomain: env('VITE_FIREBASE_AUTH_DOMAIN'),
-  projectId: env('VITE_FIREBASE_PROJECT_ID'),
-  appId: env('VITE_FIREBASE_APP_ID'),
-  messagingSenderId: env('VITE_FIREBASE_MESSAGING_SENDER_ID'),
-  storageBucket: env('VITE_FIREBASE_STORAGE_BUCKET'),
-  measurementId: env('VITE_FIREBASE_MEASUREMENT_ID'),
+  apiKey: active.firebase.apiKey,
+  authDomain: active.firebase.authDomain,
+  projectId: active.firebase.projectId,
+  appId: active.firebase.appId,
+  messagingSenderId: active.firebase.messagingSenderId,
+  storageBucket: active.firebase.storageBucket,
+  measurementId: active.firebase.measurementId,
 } as const;
 
+if (typeof console !== 'undefined') {
+  console.log('[gethuecoin] mode:', APP_MODE, '| API_BASE_URL:', API_BASE_URL);
+}
