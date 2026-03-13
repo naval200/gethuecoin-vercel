@@ -1,17 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
-import { signinUser } from './api/auth';
 import TopNav from './components/TopNav';
 import WalletOverview from './components/WalletOverview';
 import { WalletProvider } from './context/WalletContext';
 import { API_BASE_URL } from './config/appConfig';
 import { useWalletOverview } from './hooks/useWalletOverview';
-import { isFirebaseConfigured, signInWithApple, signInWithGoogle, signOutFirebaseSession } from './lib/firebaseAuth';
-import { clearAuthSource, clearAuthToken, getAuthToken, getAuthSource, setAuthSource, setAuthToken } from './lib/storage';
+import { isFirebaseConfigured } from './lib/firebaseAuth';
 import RedeemPage from './pages/RedeemPage';
 import TransactionsPage from './pages/TransactionsPage';
 import WithdrawPage from './pages/WithdrawPage';
+import { useAppDispatch, useAppSelector } from './redux/hooks';
+import {
+  clearAuth,
+  exchangeTokenRequested,
+  loginRequested,
+  logoutRequested,
+  setAuthTokenAndProvider,
+} from './redux/auth/redux';
+import {
+  selectAuthError,
+  selectAuthIsLoading,
+  selectAuthProvider,
+  selectHasToken,
+} from './redux/auth/selectors';
 
 interface UrlAuthPayload {
   directToken: string;
@@ -72,29 +84,18 @@ function clearAuthProviderFromUrl(navigate: (to: string, opts?: { replace?: bool
   navigate(target || '/', { replace: true });
 }
 
-function getFriendlyAuthError(error: unknown): string {
-  const msg = error instanceof Error ? error.message : String(error);
-  if (msg.includes('popup')) {
-    return 'Popup was blocked or closed. Please retry and allow popups.';
-  }
-  if (msg.includes('auth/unauthorized-domain')) {
-    return 'This domain is not allowed for sign-in. Add it in Firebase Console → Authentication → Settings → Authorized domains (e.g. localhost or your host).';
-  }
-  return 'Could not complete login. Please try Google or Apple login again.';
-}
-
 function App() {
+  const dispatch = useAppDispatch();
   const location = useLocation();
   const navigate = useNavigate();
   const urlAuthPayload = useMemo(() => getUrlAuthPayload(), []);
-  const [savedToken, setSavedToken] = useState(() => urlAuthPayload.directToken || getAuthToken());
-  const [authSource, setAuthSourceState] = useState<'' | 'url' | 'webapp'>(() => getAuthSource());
-  const [authError, setAuthError] = useState('');
-  const [isSigningIn, setIsSigningIn] = useState(false);
+  const hasToken = useAppSelector(selectHasToken);
+  const authProvider = useAppSelector(selectAuthProvider);
+  const authError = useAppSelector(selectAuthError);
+  const isAuthLoading = useAppSelector(selectAuthIsLoading);
   const baseUrl = API_BASE_URL;
   const authProviderTriggeredRef = useRef(false);
 
-  const hasToken = savedToken.length > 0;
   const walletOverview = useWalletOverview(hasToken);
 
   const urlAuthProvider = useMemo(
@@ -106,145 +107,25 @@ function App() {
     if (!urlAuthProvider || authProviderTriggeredRef.current || hasToken) return;
     authProviderTriggeredRef.current = true;
     clearAuthProviderFromUrl(navigate);
-
-    const runLogin = async () => {
-      if (urlAuthProvider === 'google') {
-        console.log('[auth] Login flow: /auth?provider=google triggered');
-        setIsSigningIn(true);
-        setAuthError('');
-        try {
-          const firebaseToken = await signInWithGoogle();
-          const authToken = await signinUser(firebaseToken);
-          setSavedToken(authToken);
-          setAuthSource('webapp');
-          setAuthSourceState('webapp');
-        } catch (error) {
-          console.error('[auth] Login flow: Google login failed', error);
-          setAuthError(getFriendlyAuthError(error));
-        } finally {
-          setIsSigningIn(false);
-        }
-      } else if (urlAuthProvider === 'apple') {
-        console.log('[auth] Login flow: /auth?provider=apple triggered');
-        setIsSigningIn(true);
-        setAuthError('');
-        try {
-          const firebaseToken = await signInWithApple();
-          const authToken = await signinUser(firebaseToken);
-          setSavedToken(authToken);
-          setAuthSource('webapp');
-          setAuthSourceState('webapp');
-        } catch (error) {
-          console.error('[auth] Login flow: Apple login failed', error);
-          setAuthError(getFriendlyAuthError(error));
-        } finally {
-          setIsSigningIn(false);
-        }
-      }
-    };
-
-    void runLogin();
-  }, [urlAuthProvider, hasToken, navigate]);
+    dispatch(loginRequested(urlAuthProvider));
+  }, [dispatch, urlAuthProvider, hasToken, navigate]);
 
   useEffect(() => {
     if (!urlAuthPayload.directToken && !urlAuthPayload.exchangeToken) {
       return;
     }
+    if (urlAuthPayload.directToken) {
+      dispatch(setAuthTokenAndProvider({ token: urlAuthPayload.directToken, provider: 'app' }));
+      clearAuthParamsFromUrl();
+      return;
+    }
 
-    let isCancelled = false;
-    const applyAuthFromUrl = async () => {
-      if (urlAuthPayload.directToken) {
-        setAuthToken(urlAuthPayload.directToken);
-        setAuthSource('url');
-        setAuthSourceState('url');
-        clearAuthParamsFromUrl();
-        return;
-      }
-
-      setIsSigningIn(true);
-      setAuthError('');
-      try {
-        const authToken = await signinUser(urlAuthPayload.exchangeToken);
-        if (isCancelled) {
-          return;
-        }
-        setSavedToken(authToken);
-        setAuthSource('url');
-        setAuthSourceState('url');
-        clearAuthParamsFromUrl();
-      } catch (error) {
-        if (isCancelled) {
-          return;
-        }
-        setAuthError(getFriendlyAuthError(error));
-      } finally {
-        if (!isCancelled) {
-          setIsSigningIn(false);
-        }
-      }
-    };
-
-    void applyAuthFromUrl();
-    return () => {
-      isCancelled = true;
-    };
-  }, [urlAuthPayload]);
-
-  const clearTokenOnly = () => {
-    clearAuthToken();
-    clearAuthSource();
-    setSavedToken('');
-    setAuthSourceState('');
-    setAuthError('');
-  };
+    dispatch(exchangeTokenRequested(urlAuthPayload.exchangeToken));
+    clearAuthParamsFromUrl();
+  }, [dispatch, urlAuthPayload]);
 
   const logout = () => {
-    void signOutFirebaseSession();
-    clearAuthToken();
-    clearAuthSource();
-    setSavedToken('');
-    setAuthSourceState('');
-    setAuthError('');
-  };
-
-  const startGoogleLogin = async () => {
-    console.log('[auth] Login flow: Google clicked');
-    setIsSigningIn(true);
-    setAuthError('');
-    try {
-      const firebaseToken = await signInWithGoogle();
-      console.log('[auth] Login flow: Firebase token received, exchanging with backend');
-      const authToken = await signinUser(firebaseToken);
-      console.log('[auth] Login flow: Success, session saved');
-      setSavedToken(authToken);
-      setAuthSource('webapp');
-      setAuthSourceState('webapp');
-    } catch (error) {
-      console.error('[auth] Login flow: Google login failed', error);
-      setAuthError(getFriendlyAuthError(error));
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
-
-  const startAppleLogin = async () => {
-    console.log('[auth] Login flow: Apple clicked');
-    setIsSigningIn(true);
-    setAuthError('');
-    try {
-      const firebaseToken = await signInWithApple();
-      console.log('[auth] Login flow: Firebase token received, exchanging with backend');
-      const authToken = await signinUser(firebaseToken);
-      console.log('[auth] Login flow: Success, session saved');
-      setSavedToken(authToken);
-      setAuthSource('webapp');
-      setAuthSourceState('webapp');
-    } catch (error) {
-      console.error('[auth] Login flow: Apple login failed', error);
-      setAuthError(getFriendlyAuthError(error));
-    } finally {
-      setIsSigningIn(false);
-    }
+    dispatch(logoutRequested());
   };
 
   return (
@@ -254,8 +135,8 @@ function App() {
           <h1 className='appHeaderTitle'>Your Hue Wallet</h1>
           {hasToken && (
             <div className='appHeaderActions'>
-              {authSource === 'url' && (
-                <button type='button' className='headerBtn' onClick={clearTokenOnly}>
+              {authProvider === 'app' && (
+                <button type='button' className='headerBtn' onClick={() => dispatch(clearAuth())}>
                   Back
                 </button>
               )}
@@ -272,36 +153,6 @@ function App() {
           </>
         )}
       </header>
-      {!hasToken && (
-        <section className='panel'>
-          <h2 className='panelTitle'>Session</h2>
-          <p className='mutedText breakWord'>
-            API Base URL: {baseUrl}
-          </p>
-          <div className='authActions'>
-            <button type='button' onClick={() => void startGoogleLogin()} disabled={!isFirebaseConfigured || isSigningIn}>
-              Continue with Google
-            </button>
-            <button
-              type='button'
-              className='secondaryBtn'
-              onClick={() => void startAppleLogin()}
-              disabled={!isFirebaseConfigured || isSigningIn}
-            >
-              Continue with Apple
-            </button>
-            <p className='mutedText'>
-              {!isFirebaseConfigured
-                ? 'Set Firebase environment values to enable Google/Apple login.'
-                : baseUrl
-                  ? 'After login, your token will be saved automatically on this device.'
-                  : 'Set VITE_API_BASE_URL in environment to enable login.'}
-            </p>
-            {isSigningIn && <p className='mutedText'>Signing you in...</p>}
-            {authError && <p className='errorText'>{authError}</p>}
-          </div>
-        </section>
-      )}
       {hasToken ? (
         <WalletProvider value={walletOverview}>
           <Routes>
@@ -313,12 +164,64 @@ function App() {
           </Routes>
         </WalletProvider>
       ) : (
-        <section className='panel'>
-          <p className='mutedText'>
-            Login with Google or Apple to access wallet balances, transactions, redeem, and withdraw
-            flows.
-          </p>
-        </section>
+        <Routes>
+          <Route
+            path='/'
+            element={
+              <section className='panel'>
+                <h2 className='panelTitle'>Welcome</h2>
+                <div className='authActions'>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      window.location.href = 'https://gethuecoin.com';
+                    }}
+                  >
+                    Go to gethuecoin.com
+                  </button>
+                </div>
+              </section>
+            }
+          />
+          <Route
+            path='/developer-login'
+            element={
+              <section className='panel'>
+                <h2 className='panelTitle'>Session</h2>
+                <p className='mutedText breakWord'>
+                  API Base URL: {baseUrl}
+                </p>
+                <div className='authActions'>
+                  <button
+                    type='button'
+                    onClick={() => dispatch(loginRequested('google'))}
+                    disabled={!isFirebaseConfigured || isAuthLoading}
+                  >
+                    Continue with Google
+                  </button>
+                  <button
+                    type='button'
+                    className='secondaryBtn'
+                    onClick={() => dispatch(loginRequested('apple'))}
+                    disabled={!isFirebaseConfigured || isAuthLoading}
+                  >
+                    Continue with Apple
+                  </button>
+                  <p className='mutedText'>
+                    {!isFirebaseConfigured
+                      ? 'Set Firebase environment values to enable Google/Apple login.'
+                      : baseUrl
+                        ? 'After login, your token will be saved automatically on this device.'
+                        : 'Set VITE_API_BASE_URL in environment to enable login.'}
+                  </p>
+                  {isAuthLoading && <p className='mutedText'>Signing you in...</p>}
+                  {authError && <p className='errorText'>{authError}</p>}
+                </div>
+              </section>
+            }
+          />
+          <Route path='*' element={<Navigate to='/' replace />} />
+        </Routes>
       )}
     </main>
   );

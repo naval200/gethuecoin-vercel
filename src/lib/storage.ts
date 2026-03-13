@@ -1,7 +1,7 @@
 const AUTH_TOKEN_KEY = 'gethuecoin_auth_token';
 const AUTH_SOURCE_KEY = 'gethuecoin_auth_source';
 
-export type AuthSource = 'url' | 'webapp';
+export type AuthSource = 'app' | 'google' | 'apple';
 
 export function getAuthToken(): string {
   return localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
@@ -17,7 +17,14 @@ export function clearAuthToken(): void {
 
 export function getAuthSource(): AuthSource | '' {
   const v = localStorage.getItem(AUTH_SOURCE_KEY);
-  return (v === 'url' || v === 'webapp' ? v : '') as AuthSource | '';
+  if (v === 'app' || v === 'google' || v === 'apple') {
+    return v;
+  }
+  // Backward compatibility with previously stored source values.
+  if (v === 'url') {
+    return 'app';
+  }
+  return '';
 }
 
 export function setAuthSource(source: AuthSource): void {

@@ -1,6 +1,5 @@
 import { apiV0Client } from './client';
 import { API_BASE_URL } from '../config/appConfig';
-import { setAuthToken } from '../lib/storage';
 
 interface SigninResponse {
   authToken?: string;
@@ -21,7 +20,6 @@ export async function signinUser(token: string): Promise<string> {
     }
 
     console.log('[auth] Step 6: Got session token, length:', authToken.length);
-    setAuthToken(authToken);
     return authToken;
   } catch (err: unknown) {
     const axiosErr = err as { response?: { status?: number; data?: unknown }; message?: string };
