@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import { signinUser } from './api/auth';
 import TopNav from './components/TopNav';
@@ -54,6 +54,24 @@ function clearAuthParamsFromUrl(): void {
   window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
 }
 
+function getUrlAuthProvider(pathname: string, search: string): 'google' | 'apple' | null {
+  const path = pathname.replace(/\/$/, '') || '/';
+  if (path !== '/auth') return null;
+  const params = new URLSearchParams(search);
+  const provider = params.get('provider');
+  if (provider === 'google' || provider === 'apple') return provider;
+  return null;
+}
+
+function clearAuthProviderFromUrl(navigate: (to: string, opts?: { replace?: boolean }) => void): void {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('provider');
+  const path = url.pathname.replace(/\/$/, '') || '/';
+  const newPath = path === '/auth' ? '/' : url.pathname;
+  const target = `${newPath}${url.search}${url.hash}`;
+  navigate(target || '/', { replace: true });
+}
+
 function getFriendlyAuthError(error: unknown): string {
   const msg = error instanceof Error ? error.message : String(error);
   if (msg.includes('popup')) {
@@ -66,15 +84,67 @@ function getFriendlyAuthError(error: unknown): string {
 }
 
 function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const urlAuthPayload = useMemo(() => getUrlAuthPayload(), []);
   const [savedToken, setSavedToken] = useState(() => urlAuthPayload.directToken || getAuthToken());
   const [authSource, setAuthSourceState] = useState<'' | 'url' | 'webapp'>(() => getAuthSource());
   const [authError, setAuthError] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
   const baseUrl = API_BASE_URL;
+  const authProviderTriggeredRef = useRef(false);
 
   const hasToken = savedToken.length > 0;
   const walletOverview = useWalletOverview(hasToken);
+
+  const urlAuthProvider = useMemo(
+    () => getUrlAuthProvider(location.pathname, location.search),
+    [location.pathname, location.search],
+  );
+
+  useEffect(() => {
+    if (!urlAuthProvider || authProviderTriggeredRef.current || hasToken) return;
+    authProviderTriggeredRef.current = true;
+    clearAuthProviderFromUrl(navigate);
+
+    const runLogin = async () => {
+      if (urlAuthProvider === 'google') {
+        console.log('[auth] Login flow: /auth?provider=google triggered');
+        setIsSigningIn(true);
+        setAuthError('');
+        try {
+          const firebaseToken = await signInWithGoogle();
+          const authToken = await signinUser(firebaseToken);
+          setSavedToken(authToken);
+          setAuthSource('webapp');
+          setAuthSourceState('webapp');
+        } catch (error) {
+          console.error('[auth] Login flow: Google login failed', error);
+          setAuthError(getFriendlyAuthError(error));
+        } finally {
+          setIsSigningIn(false);
+        }
+      } else if (urlAuthProvider === 'apple') {
+        console.log('[auth] Login flow: /auth?provider=apple triggered');
+        setIsSigningIn(true);
+        setAuthError('');
+        try {
+          const firebaseToken = await signInWithApple();
+          const authToken = await signinUser(firebaseToken);
+          setSavedToken(authToken);
+          setAuthSource('webapp');
+          setAuthSourceState('webapp');
+        } catch (error) {
+          console.error('[auth] Login flow: Apple login failed', error);
+          setAuthError(getFriendlyAuthError(error));
+        } finally {
+          setIsSigningIn(false);
+        }
+      }
+    };
+
+    void runLogin();
+  }, [urlAuthProvider, hasToken, navigate]);
 
   useEffect(() => {
     if (!urlAuthPayload.directToken && !urlAuthPayload.exchangeToken) {
