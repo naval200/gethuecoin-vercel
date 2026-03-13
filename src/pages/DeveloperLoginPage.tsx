@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { loginRequested } from '../redux/auth/redux';
@@ -5,15 +6,11 @@ import {
   selectAuthError,
   selectAuthIsLoading,
 } from '../redux/auth/selectors';
-import { API_BASE_URL } from '../config/appConfig';
+import { getApiBaseUrl, getFirebaseConfig } from '../config/appConfig';
 import { isFirebaseConfigured } from '../lib/firebaseAuth';
-import { useState } from 'react';
-import {
-  getStoredMode,
-  setStoredMode,
-  type AppMode,
-  VALID_MODES,
-} from '../lib/mode';
+import { getModeFromUrl, type AppMode, VALID_MODES } from '../lib/mode';
+import { selectAppMode } from '../redux/mode/selectors';
+import { setAppMode } from '../redux/mode/redux';
 
 export default function DeveloperLoginPage() {
   const dispatch = useAppDispatch();
@@ -21,13 +18,20 @@ export default function DeveloperLoginPage() {
   const navigate = useNavigate();
   const isAuthLoading = useAppSelector(selectAuthIsLoading);
   const authError = useAppSelector(selectAuthError);
-  const baseUrl = API_BASE_URL;
-  const [modeValue, setModeValue] = useState<AppMode>(() => getStoredMode() ?? 'mainnet');
+  const appMode = useAppSelector(selectAppMode);
+  const baseUrl = getApiBaseUrl(appMode);
+
+  // Keep Redux in sync with ?mode= in URL when user lands or changes URL
+  useEffect(() => {
+    const urlMode = getModeFromUrl();
+    if (urlMode !== appMode) {
+      dispatch(setAppMode(urlMode));
+    }
+  }, [location.search, appMode, dispatch]);
 
   const handleModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const mode = e.target.value as AppMode;
-    setStoredMode(mode);
-    setModeValue(mode);
+    dispatch(setAppMode(mode));
     const params = new URLSearchParams(location.search);
     params.set('mode', mode);
     navigate(`${location.pathname}?${params.toString()}`, { replace: true });
@@ -43,7 +47,7 @@ export default function DeveloperLoginPage() {
         <label htmlFor='mode'>Mode</label>
         <select
           id='mode'
-          value={modeValue ?? 'mainnet'}
+          value={appMode}
           onChange={handleModeChange}
           className='selectInput'
         >
@@ -58,7 +62,7 @@ export default function DeveloperLoginPage() {
         <button
           type='button'
           onClick={() => dispatch(loginRequested('google'))}
-          disabled={!isFirebaseConfigured || isAuthLoading}
+          disabled={!isFirebaseConfigured(getFirebaseConfig(appMode)) || isAuthLoading}
         >
           Continue with Google
         </button>
@@ -66,12 +70,12 @@ export default function DeveloperLoginPage() {
           type='button'
           className='secondaryBtn'
           onClick={() => dispatch(loginRequested('apple'))}
-          disabled={!isFirebaseConfigured || isAuthLoading}
+          disabled={!isFirebaseConfigured(getFirebaseConfig(appMode)) || isAuthLoading}
         >
           Continue with Apple
         </button>
         <p className='mutedText'>
-          {!isFirebaseConfigured
+          {!isFirebaseConfigured(getFirebaseConfig(appMode))
             ? 'Firebase is not configured for this mode.'
             : baseUrl
               ? 'After login, your token will be saved automatically on this device.'

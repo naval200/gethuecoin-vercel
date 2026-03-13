@@ -1,10 +1,11 @@
 import axios, { AxiosError } from 'axios';
 
-import { API_BASE_URL } from '../config/appConfig';
+import { getApiBaseUrl } from '../config/appConfig';
 import { clearAuthToken, getAuthToken } from '../lib/storage';
+import { store } from '../redux/store';
 
 export const apiV0Client = axios.create({
-  baseURL: `${API_BASE_URL}/v0`,
+  baseURL: '', // set per-request from Redux mode
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
@@ -14,6 +15,8 @@ export const apiV0Client = axios.create({
 });
 
 apiV0Client.interceptors.request.use((config) => {
+  const mode = store.getState().mode.mode;
+  config.baseURL = `${getApiBaseUrl(mode)}/v0`;
   // /auth is the token exchange endpoint; it does not require an existing bearer token.
   if (config.url !== '/auth') {
     const token = getAuthToken();

@@ -1,9 +1,10 @@
 import type { Middleware } from '@reduxjs/toolkit';
 
 import { signinUser } from '../../api/auth';
+import { getFirebaseConfig } from '../../config/appConfig';
 import { signInWithApple, signInWithGoogle, signOutFirebaseSession } from '../../lib/firebaseAuth';
-import { clearModeInStorage } from '../../lib/mode';
 import { clearAuthSource, clearAuthToken, setAuthSource, setAuthToken } from '../../lib/storage';
+import { clearAppMode } from '../mode/redux';
 import {
   clearAuth,
   exchangeTokenRequested,
@@ -25,13 +26,17 @@ function getFriendlyAuthError(error: unknown): string {
   return 'Could not complete login. Please try Google or Apple login again.';
 }
 
-export const authMiddleware: Middleware = ({ dispatch }) => (next) => async (action) => {
+export const authMiddleware: Middleware = ({ dispatch, getState }) => (next) => async (action) => {
+  const firebaseConfig = () => getFirebaseConfig(getState().mode.mode);
+
   if (loginRequested.match(action)) {
     dispatch(setAuthLoading(true));
     dispatch(setAuthError(''));
     try {
       const firebaseToken =
-        action.payload === 'google' ? await signInWithGoogle() : await signInWithApple();
+        action.payload === 'google'
+          ? await signInWithGoogle(firebaseConfig())
+          : await signInWithApple(firebaseConfig());
       const authToken = await signinUser(firebaseToken);
       dispatch(setAuthTokenAndProvider({ token: authToken, provider: action.payload }));
     } catch (error) {
@@ -52,7 +57,7 @@ export const authMiddleware: Middleware = ({ dispatch }) => (next) => async (act
 
   if (logoutRequested.match(action)) {
     try {
-      await signOutFirebaseSession();
+      await signOutFirebaseSession(firebaseConfig());
     } catch {
       // Ignore provider-session signout failures and clear local app session anyway.
     }
@@ -68,7 +73,7 @@ export const authMiddleware: Middleware = ({ dispatch }) => (next) => async (act
   if (clearAuth.match(action)) {
     clearAuthToken();
     clearAuthSource();
-    clearModeInStorage();
+    dispatch(clearAppMode());
   }
 
   return result;

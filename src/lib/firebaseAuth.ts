@@ -7,29 +7,26 @@ import {
   signOut,
 } from 'firebase/auth';
 
-import { FIREBASE_CONFIG } from '../config/appConfig';
+import { getFirebaseConfig } from '../config/appConfig';
 
-const requiredFirebaseKeys = [
-  FIREBASE_CONFIG.apiKey,
-  FIREBASE_CONFIG.authDomain,
-  FIREBASE_CONFIG.projectId,
-  FIREBASE_CONFIG.appId,
-];
+export function isFirebaseConfigured(config: ReturnType<typeof getFirebaseConfig>): boolean {
+  return [config.apiKey, config.authDomain, config.projectId, config.appId].every(
+    (value) => value.length > 0,
+  );
+}
 
-export const isFirebaseConfigured = requiredFirebaseKeys.every((value) => value.length > 0);
-
-function getFirebaseAuth() {
-  if (!isFirebaseConfigured) {
+function getFirebaseAuth(config: ReturnType<typeof getFirebaseConfig>) {
+  if (!isFirebaseConfigured(config)) {
     throw new Error('Missing Firebase configuration.');
   }
 
-  const app = getApps()[0] ?? initializeApp(FIREBASE_CONFIG);
+  const app = getApps()[0] ?? initializeApp(config);
   return getAuth(app);
 }
 
-export async function signInWithGoogle(): Promise<string> {
+export async function signInWithGoogle(firebaseConfig: ReturnType<typeof getFirebaseConfig>): Promise<string> {
   console.log('[auth] Step 1: Starting Google sign-in (popup)');
-  const auth = getFirebaseAuth();
+  const auth = getFirebaseAuth(firebaseConfig);
   const provider = new GoogleAuthProvider();
   const credential = await signInWithPopup(auth, provider);
   console.log('[auth] Step 2: Google popup succeeded, fetching id token');
@@ -38,9 +35,9 @@ export async function signInWithGoogle(): Promise<string> {
   return idToken;
 }
 
-export async function signInWithApple(): Promise<string> {
+export async function signInWithApple(firebaseConfig: ReturnType<typeof getFirebaseConfig>): Promise<string> {
   console.log('[auth] Step 1: Starting Apple sign-in (popup)');
-  const auth = getFirebaseAuth();
+  const auth = getFirebaseAuth(firebaseConfig);
   const provider = new OAuthProvider('apple.com');
   const credential = await signInWithPopup(auth, provider);
   console.log('[auth] Step 2: Apple popup succeeded, fetching id token');
@@ -49,10 +46,10 @@ export async function signInWithApple(): Promise<string> {
   return idToken;
 }
 
-export async function signOutFirebaseSession(): Promise<void> {
-  if (!isFirebaseConfigured) {
+export async function signOutFirebaseSession(firebaseConfig: ReturnType<typeof getFirebaseConfig>): Promise<void> {
+  if (!isFirebaseConfigured(firebaseConfig)) {
     return;
   }
-  await signOut(getFirebaseAuth());
+  await signOut(getFirebaseAuth(firebaseConfig));
 }
 

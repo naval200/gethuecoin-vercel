@@ -1,8 +1,6 @@
-import { type AppMode, getAppMode } from '../lib/mode';
+import type { AppMode } from '../lib/mode';
 
 export type { AppMode } from '../lib/mode';
-
-export const APP_MODE = getAppMode();
 
 interface EnvConfig {
   apiBaseUrl: string;
@@ -56,20 +54,19 @@ const CONFIGS: Record<AppMode, EnvConfig> = {
   },
 };
 
-const active = CONFIGS[APP_MODE];
+export function getApiBaseUrl(mode: AppMode): string {
+  return CONFIGS[mode].apiBaseUrl.replace(/\/+$/, '');
+}
 
-export const API_BASE_URL = active.apiBaseUrl.replace(/\/+$/, '');
-
-export const FIREBASE_CONFIG = {
-  apiKey: active.firebase.apiKey,
-  authDomain: active.firebase.authDomain,
-  projectId: active.firebase.projectId,
-  appId: active.firebase.appId,
-  messagingSenderId: active.firebase.messagingSenderId,
-  storageBucket: active.firebase.storageBucket,
-  measurementId: active.firebase.measurementId,
-} as const;
-
-if (typeof console !== 'undefined') {
-  console.log('[gethuecoin] mode:', APP_MODE, '| API_BASE_URL:', API_BASE_URL);
+export function getFirebaseConfig(mode: AppMode) {
+  const { firebase } = CONFIGS[mode];
+  return {
+    apiKey: firebase.apiKey,
+    authDomain: firebase.authDomain,
+    projectId: firebase.projectId,
+    appId: firebase.appId,
+    messagingSenderId: firebase.messagingSenderId,
+    storageBucket: firebase.storageBucket,
+    measurementId: firebase.measurementId,
+  } as const;
 }

@@ -1,5 +1,6 @@
 import { apiV0Client } from './client';
-import { API_BASE_URL } from '../config/appConfig';
+import { getApiBaseUrl } from '../config/appConfig';
+import { store } from '../redux/store';
 
 interface SigninResponse {
   authToken?: string;
@@ -7,7 +8,8 @@ interface SigninResponse {
 }
 
 export async function signinUser(token: string): Promise<string> {
-  const url = `${API_BASE_URL}/v0/auth`;
+  const baseUrl = getApiBaseUrl(store.getState().mode.mode);
+  const url = `${baseUrl}/v0/auth`;
   console.log('[auth] Step 4: Exchanging Firebase token at', url, '(token length:', token?.length ?? 0, ')');
   try {
     const response = await apiV0Client.post<SigninResponse>('/auth', { token });

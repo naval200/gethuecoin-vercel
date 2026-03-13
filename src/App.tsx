@@ -5,7 +5,6 @@ import TopNav from './components/TopNav';
 import WalletOverview from './components/WalletOverview';
 import { WalletProvider } from './context/WalletContext';
 import { useWalletOverview } from './hooks/useWalletOverview';
-import { getStoredMode } from './lib/mode';
 import DeveloperLoginPage from './pages/DeveloperLoginPage';
 import RedeemPage from './pages/RedeemPage';
 import TransactionsPage from './pages/TransactionsPage';
@@ -23,6 +22,7 @@ import {
   selectAuthProvider,
   selectHasToken,
 } from './redux/auth/selectors';
+import { selectStoredMode } from './redux/mode/selectors';
 
 interface UrlAuthPayload {
   directToken: string;
@@ -80,6 +80,7 @@ function App() {
   const urlAuthPayload = useMemo(() => getUrlAuthPayload(), []);
   const hasToken = useAppSelector(selectHasToken);
   const authProvider = useAppSelector(selectAuthProvider);
+  const storedMode = useAppSelector(selectStoredMode);
   const authProviderTriggeredRef = useRef(false);
 
   const walletOverview = useWalletOverview(hasToken);
@@ -113,9 +114,6 @@ function App() {
   const logout = () => {
     dispatch(logoutRequested());
   };
-
-  // Popup only for local/development; mainnet (default) has no indicator.
-  const storedMode = getStoredMode();
 
   return (
     <main className='appRoot'>
