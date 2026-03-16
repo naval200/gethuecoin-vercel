@@ -9,9 +9,9 @@ import DeveloperLoginPage from './pages/DeveloperLoginPage';
 import RedeemPage from './pages/RedeemPage';
 import TransactionsPage from './pages/TransactionsPage';
 import WithdrawPage from './pages/WithdrawPage';
+import { clearAuthToken, clearAuthSource } from './lib/storage';
 import { useAppDispatch, useAppSelector } from './redux/hooks';
 import {
-  clearAuth,
   exchangeTokenRequested,
   loginRequested,
   logoutRequested,
@@ -126,14 +126,23 @@ function App() {
           <h1 className='appHeaderTitle'>Your Hue Wallet</h1>
           {hasToken && (
             <div className='appHeaderActions'>
-              {authProvider === 'app' && (
-                <button type='button' className='headerBtn' onClick={() => dispatch(clearAuth())}>
+              {authProvider === 'app' ? (
+                <button
+                  type='button'
+                  className='headerBtn'
+                  onClick={() => {
+                    clearAuthToken();
+                    clearAuthSource();
+                    window.close();
+                  }}
+                >
                   Back
                 </button>
+              ) : (
+                <button type='button' className='headerBtn' onClick={logout}>
+                  Logout
+                </button>
               )}
-              <button type='button' className='headerBtn' onClick={logout}>
-                Logout
-              </button>
             </div>
           )}
         </div>
