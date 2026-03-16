@@ -136,7 +136,7 @@ function App() {
                     window.close();
                   }}
                 >
-                  Back
+                  Close
                 </button>
               ) : (
                 <button type='button' className='headerBtn' onClick={logout}>
